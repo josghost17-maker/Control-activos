@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Control de Activos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --navy: #0f1c2e;
+            --navy-mid: #1a2d45;
+            --navy-light: #243b55;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59,130,246,0.18);
+            --gold: #f59e0b;
+            --green: #10b981;
+            --red: #ef4444;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --card: rgba(26,45,69,0.8);
+            --border: rgba(59,130,246,0.15);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--navy);
+            color: var(--text);
+            min-height: 100vh;
+            background-image:
+                radial-gradient(ellipse 80% 50% at 20% -10%, rgba(59,130,246,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 110%, rgba(16,185,129,0.06) 0%, transparent 50%);
+        }
+
+        /* ── HEADER ── */
+        header {
+            background: rgba(15,28,46,0.95);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+            position: sticky; top: 0; z-index: 100;
+            padding: 0 2rem;
+        }
+        .header-inner {
+            max-width: 1280px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            height: 64px;
+        }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent), #1d4ed8);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .logo-icon svg { width: 18px; height: 18px; color: white; }
+        .logo-text { font-size: 1rem; font-weight: 600; letter-spacing: -0.02em; }
+        .logo-text span { color: var(--accent); }
+
+        /* ── TABS ── */
+        .tabs {
+            display: flex; gap: 4px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 12px; padding: 4px;
+        }
+        .tab-btn {
+            padding: 7px 18px; border-radius: 8px; border: none;
+            font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500;
+            cursor: pointer; transition: all 0.2s;
+            color: var(--text-muted); background: transparent;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .tab-btn.active {
+            background: var(--accent); color: white;
+            box-shadow: 0 2px 12px rgba(59,130,246,0.4);
+        }
+        .tab-btn:not(.active):hover { color: var(--text); background: rgba(255,255,255,0.06); }
+        .lock-icon { width: 12px; height: 12px; opacity: 0.6; }
+
+        /* ── MAIN ── */
+        main { max-width: 1280px; margin: 0 auto; padding: 2.5rem 2rem; }
+
+        /* ── TAB PANELS ── */
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        /* ── SEARCH SECTION ── */
+        .search-hero {
+            text-align: center; margin-bottom: 2.5rem;
+        }
+        .search-hero h2 {
+            font-size: 1.8rem; font-weight: 600; letter-spacing: -0.03em;
+            margin-bottom: 0.4rem;
+        }
+        .search-hero p { color: var(--text-muted); font-size: 0.9rem; }
+        .search-box {
+            max-width: 480px; margin: 2rem auto 0;
+            display: flex; gap: 10px;
+        }
+        .search-input {
+            flex: 1; background: var(--navy-mid); border: 1px solid var(--border);
+            border-radius: 12px; padding: 14px 20px;
+            font-family: 'DM Mono', monospace; font-size: 1rem;
+            color: var(--text); outline: none; transition: all 0.2s;
+            text-transform: uppercase; text-align: center; letter-spacing: 0.08em;
+        }
+        .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .search-input::placeholder { color: var(--text-muted); font-family: 'DM Sans', sans-serif; text-transform: none; letter-spacing: normal; }
+        .btn-primary {
+            background: var(--accent); color: white; border: none; border-radius: 12px;
+            padding: 14px 24px; font-family: 'DM Sans', sans-serif; font-weight: 600;
+            font-size: 0.9rem; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+            box-shadow: 0 4px 14px rgba(59,130,246,0.35);
+        }
+        .btn-primary:hover { background: #2563eb; transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        /* ── STATS GRID ── */
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr));
+            gap: 1rem; margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 1.5rem;
+            display: flex; align-items: center; gap: 1rem;
+            backdrop-filter: blur(8px); transition: border-color 0.2s;
+        }
+        .stat-card:hover { border-color: rgba(59,130,246,0.35); }
+        .stat-icon {
+            width: 48px; height: 48px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .stat-icon svg { width: 22px; height: 22px; }
+        .stat-num { font-size: 1.9rem; font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
+        .stat-label { color: var(--text-muted); font-size: 0.78rem; margin-top: 3px; }
+
+        /* ── CHARTS GRID ── */
+        .charts-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        @media(max-width:768px){ .charts-grid { grid-template-columns: 1fr; } }
+        .chart-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 20px; padding: 1.8rem; backdrop-filter: blur(8px);
+        }
+        .chart-card.wide { grid-column: 1 / -1; }
+        .chart-title {
+            font-size: 0.82rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 1.4rem;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .chart-title::before {
+            content: ''; width: 3px; height: 14px; background: var(--accent); border-radius: 2px;
+        }
+        .chart-wrap { position: relative; height: 220px; }
+
+        /* ── RECENT TABLE ── */
+        .table-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 20px; padding: 1.8rem; backdrop-filter: blur(8px);
+        }
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+            font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--text-muted); font-weight: 600; padding: 0 12px 12px;
+            border-bottom: 1px solid var(--border); text-align: left;
+        }
+        tbody tr { transition: background 0.15s; }
+        tbody tr:hover { background: rgba(59,130,246,0.06); }
+        tbody td { padding: 14px 12px; font-size: 0.86rem; border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .badge {
+            display: inline-block; padding: 3px 10px; border-radius: 99px;
+            font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .badge-green { background: rgba(16,185,129,0.15); color: var(--green); }
+        .badge-orange { background: rgba(245,158,11,0.15); color: var(--gold); }
+        .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+        .mono { font-family: 'DM Mono', monospace; color: var(--accent); font-size: 0.8rem; }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            position: fixed; inset: 0; z-index: 200;
+            background: rgba(10,18,30,0.75); backdrop-filter: blur(6px);
+            display: none; align-items: center; justify-content: center; padding: 1rem;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: var(--navy-mid); border: 1px solid var(--border);
+            border-radius: 24px; width: 100%; max-width: 640px;
+            max-height: 90vh; overflow-y: auto; animation: slideUp 0.25s ease-out;
+        }
+        @keyframes slideUp {
+            from { opacity:0; transform: translateY(20px); }
+            to   { opacity:1; transform: translateY(0); }
+        }
+        .modal-header {
+            background: linear-gradient(135deg, #1e3a5f, #1a2d45);
+            border-bottom: 1px solid var(--border);
+            padding: 1.8rem; border-radius: 24px 24px 0 0;
+            display: flex; justify-content: space-between; align-items: flex-start;
+        }
+        .modal-location { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; }
+        .modal-location-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: #93c5fd; margin-bottom: 4px; }
+        .close-btn {
+            background: rgba(255,255,255,0.08); border: none; color: var(--text);
+            width: 36px; height: 36px; border-radius: 10px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+        }
+        .close-btn:hover { background: rgba(255,255,255,0.15); }
+        .modal-body { padding: 1.8rem; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.8rem; }
+        .info-item label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); display: block; margin-bottom: 4px; }
+        .info-item p { font-weight: 500; font-size: 0.95rem; }
+
+        /* ── PASSWORD MODAL ── */
+        .pw-modal {
+            background: var(--navy-mid); border: 1px solid var(--border);
+            border-radius: 24px; width: 100%; max-width: 360px;
+            padding: 2.5rem; animation: slideUp 0.25s ease-out; text-align: center;
+        }
+        .pw-modal h3 { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.4rem; }
+        .pw-modal p { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+        .pw-input {
+            width: 100%; background: var(--navy); border: 1px solid var(--border);
+            border-radius: 10px; padding: 12px 16px; color: var(--text);
+            font-family: 'DM Sans', sans-serif; font-size: 1rem;
+            outline: none; margin-bottom: 1rem; transition: border-color 0.2s; text-align: center;
+            letter-spacing: 0.15em;
+        }
+        .pw-input:focus { border-color: var(--accent); }
+        .pw-error { color: var(--red); font-size: 0.8rem; margin-top: -0.5rem; margin-bottom: 0.8rem; display: none; }
+
+        /* ── SUPPLIES PANEL ── */
+        .supplies-notice {
+            text-align: center; padding: 4rem 2rem;
+            color: var(--text-muted);
+        }
+        .supplies-notice svg { width: 48px; height: 48px; margin: 0 auto 1rem; opacity: 0.3; }
+        .supplies-notice h3 { font-size: 1.1rem; color: var(--text); margin-bottom: 0.5rem; }
+
+        /* loading spinner */
+        .spin { animation: spin 0.8s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--navy-light); border-radius: 99px; }
+
+        /* Responsive */
+        @media(max-width:640px){
+            .header-inner { gap: 1rem; }
+            .tabs { gap: 2px; }
+            .tab-btn { padding: 6px 12px; font-size: 0.75rem; }
+            .search-box { flex-direction: column; }
+            .info-grid { grid-template-columns: 1fr; }
+            .charts-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-inner">
+        <div class="logo">
+            <div class="logo-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            </div>
+            <span class="logo-text">Control de <span>Activos</span></span>
+        </div>
+        <nav class="tabs" id="mainTabs">
+            <button class="tab-btn active" onclick="switchTab('search', this)">
+                <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                Búsqueda
+            </button>
+            <button class="tab-btn" onclick="switchTab('dashboard', this)">
+                <svg style="width:14px;height:14px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                Dashboard
+            </button>
+            <button class="tab-btn" onclick="checkPassword('supplies', this)">
+                <svg class="lock-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                Suministros
+            </button>
+            <button class="tab-btn" onclick="checkPassword('reports', this)">
+                <svg class="lock-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                Reportes
+            </button>
+            <button class="tab-btn" onclick="checkPassword('rawdata', this)">
+                <svg class="lock-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                Ver Datos
+            </button>
+        </nav>
+    </div>
+</header>
+
+<main>
+
+    <!-- ══ PANEL: BÚSQUEDA ══ -->
+    <div class="panel active" id="panel-search">
+        <div class="search-hero">
+            <h2>Consultar Bien Institucional</h2>
+            <p>Ingresa el código del activo para ver su ubicación e historial completo</p>
+            <div class="search-box">
+                <input type="text" id="searchInput" class="search-input"
+                    placeholder="Código del activo..."
+                    onkeypress="if(event.key==='Enter') buscarProducto()">
+                <button class="btn-primary" id="btnBuscar" onclick="buscarProducto()">Buscar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ PANEL: DASHBOARD ══ -->
+    <div class="panel" id="panel-dashboard">
+        <!-- KPI Cards -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background:rgba(59,130,246,0.15)">
+                    <svg fill="none" stroke="#3b82f6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 10V7"/></svg>
+                </div>
+                <div>
+                    <div class="stat-num" id="kpiTotal">—</div>
+                    <div class="stat-label">Total de Activos</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background:rgba(16,185,129,0.15)">
+                    <svg fill="none" stroke="#10b981" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <div class="stat-num" id="kpiBuenos">—</div>
+                    <div class="stat-label">En Buen Estado</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background:rgba(245,158,11,0.15)">
+                    <svg fill="none" stroke="#f59e0b" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                </div>
+                <div>
+                    <div class="stat-num" id="kpiMalos">—</div>
+                    <div class="stat-label">En Mal Estado</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background:rgba(139,92,246,0.15)">
+                    <svg fill="none" stroke="#8b5cf6" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                </div>
+                <div>
+                    <div class="stat-num" id="kpiUbicaciones">—</div>
+                    <div class="stat-label">Ubicaciones Activas</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-title">Activos por Ubicación</div>
+                <div class="chart-wrap"><canvas id="chartUbicacion"></canvas></div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">Estado de los Bienes</div>
+                <div class="chart-wrap"><canvas id="chartEstado"></canvas></div>
+            </div>
+            <div class="chart-card wide">
+                <div class="chart-title">Adquisiciones por Año</div>
+                <div class="chart-wrap" style="height:200px"><canvas id="chartFechas"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Recent movements -->
+        <div class="table-card">
+            <div class="chart-title" style="margin-bottom:1.2rem">Movimientos Recientes</div>
+            <div style="overflow-x:auto">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Bien</th>
+                            <th>Fecha</th>
+                            <th>Ubicación</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentTable">
+                        <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem">Cargando datos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══ PANEL: SUMINISTROS (protegido) ══ -->
+    <div class="panel" id="panel-supplies">
+        <div class="supplies-notice">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+            <h3>Gestión de Suministros</h3>
+            <p>Conecta esta sección a tu hoja de Google Sheets de suministros.<br>Aquí irán los bienes de menor cuantía con su propio inventario.</p>
+        </div>
+    </div>
+
+    <!-- ══ PANEL: REPORTES (protegido) ══ -->
+    <div class="panel" id="panel-reports">
+        <div class="supplies-notice">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <h3>Reportes y Exportaciones</h3>
+            <p>Aquí podrás exportar inventarios, generar informes PDF y ver auditorías detalladas.</p>
+        </div>
+    </div>
+
+    <!-- ══ PANEL: VER DATOS CRUDOS (protegido) ══ -->
+    <div class="panel" id="panel-rawdata">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem">
+            <div>
+                <h2 style="font-size:1.4rem;font-weight:600;letter-spacing:-0.02em">Datos de Google Sheets</h2>
+                <p style="color:var(--text-muted);font-size:0.85rem;margin-top:3px">Todos los registros en tiempo real</p>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center">
+                <input id="rawSearch" type="text" placeholder="Filtrar tabla..." oninput="filterRawTable()"
+                    style="background:var(--navy-mid);border:1px solid var(--border);border-radius:10px;padding:9px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.85rem;outline:none;width:200px">
+                <button class="btn-primary" style="padding:9px 16px;font-size:0.82rem" onclick="loadRawData(true)">↺ Recargar</button>
+            </div>
+        </div>
+        <div class="table-card" style="padding:0;overflow:hidden">
+            <div style="overflow-x:auto;max-height:65vh;overflow-y:auto">
+                <table id="rawTable" style="min-width:700px">
+                    <thead id="rawHead" style="position:sticky;top:0;background:var(--navy-light);z-index:10"></thead>
+                    <tbody id="rawBody">
+                        <tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:3rem">Cargando datos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <p id="rawCount" style="color:var(--text-muted);font-size:0.78rem;margin-top:0.8rem;text-align:right"></p>
+    </div>
+
+</main>
+
+<!-- ══ MODAL: DETALLE DE ACTIVO ══ -->
+<div class="modal-overlay" id="assetModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div>
+                <div class="modal-location-label">📍 Ubicación Actual</div>
+                <div class="modal-location" id="modalUbicacion">—</div>
+            </div>
+            <button class="close-btn" onclick="cerrarModal()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>Descripción del Bien</label>
+                    <p id="modalNombre">—</p>
+                </div>
+                <div class="info-item">
+                    <label>Marca / Modelo</label>
+                    <p id="modalMarca">—</p>
+                </div>
+                <div class="info-item">
+                    <label>Código Identificador</label>
+                    <p class="mono" id="modalCodigo">—</p>
+                </div>
+                <div class="info-item">
+                    <label>Fecha de Adquisición</label>
+                    <p id="modalFecha">—</p>
+                </div>
+            </div>
+            <div style="background:var(--navy);border:1px solid var(--border);border-radius:16px;padding:1.4rem">
+                <div class="chart-title" style="margin-bottom:1rem">Historial de Movimientos</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Ubicación</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historialTabla"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ MODAL: CONTRASEÑA ══ -->
+<div class="modal-overlay" id="pwModal">
+    <div class="pw-modal">
+        <div style="font-size:2rem;margin-bottom:0.8rem">🔐</div>
+        <h3>Acceso Restringido</h3>
+        <p>Ingresa la contraseña para acceder a esta sección</p>
+        <input type="password" id="pwInput" class="pw-input" placeholder="••••••••"
+            onkeypress="if(event.key==='Enter') verifyPassword()">
+        <p class="pw-error" id="pwError">Contraseña incorrecta. Inténtalo de nuevo.</p>
+        <button class="btn-primary" style="width:100%" onclick="verifyPassword()">Ingresar</button>
+        <button onclick="closePwModal()" style="background:none;border:none;color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:0.85rem;cursor:pointer;margin-top:1rem;width:100%">Cancelar</button>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CONFIGURACIÓN — edita solo estos valores
+// ═══════════════════════════════════════════════
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbwHa3Nley7wwddmC3kmM4zmfLfsb80tnRftRQcOYm-dFai_RzS1vGZ7BrItkWzYYHcb/exec";
+
+// Contraseñas para pestañas protegidas
+const PASSWORDS = {
+    supplies: "suministros2024",   // ← cambia estas contraseñas
+    reports:  "reportes2024",
+    rawdata:  "123456789"
+};
+// ═══════════════════════════════════════════════
+
+let allData = [];
+let charts = {};
+let unlockedTabs = new Set();
+let pendingTab = null;
+let pendingBtn = null;
+
+// ── TABS ──
+function switchTab(name, btn) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.add('active');
+    btn.classList.add('active');
+    if (name === 'dashboard' && allData.length === 0) loadDashboard();
+    if (name === 'rawdata') loadRawData();
+}
+
+// ── PASSWORD ──
+function checkPassword(tabName, btn) {
+    if (unlockedTabs.has(tabName)) {
+        switchTab(tabName, btn);
+        return;
+    }
+    pendingTab = tabName;
+    pendingBtn = btn;
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwError').style.display = 'none';
+    document.getElementById('pwModal').classList.add('open');
+    setTimeout(() => document.getElementById('pwInput').focus(), 100);
+}
+
+function verifyPassword() {
+    const val = document.getElementById('pwInput').value;
+    if (val === PASSWORDS[pendingTab]) {
+        unlockedTabs.add(pendingTab);
+        closePwModal();
+        switchTab(pendingTab, pendingBtn);
+    } else {
+        document.getElementById('pwError').style.display = 'block';
+        document.getElementById('pwInput').value = '';
+        document.getElementById('pwInput').focus();
+    }
+}
+
+function closePwModal() {
+    document.getElementById('pwModal').classList.remove('open');
+}
+
+// ── BÚSQUEDA ──
+async function buscarProducto() {
+    const input = document.getElementById('searchInput');
+    const btn = document.getElementById('btnBuscar');
+    const codigo = input.value.trim().toUpperCase();
+    if (!codigo) { input.style.borderColor = 'var(--red)'; return; }
+    input.style.borderColor = '';
+
+    btn.innerHTML = `<span class="spin">⟳</span> Cargando...`;
+    btn.disabled = true;
+
+    try {
+        if (allData.length === 0) {
+            const r = await fetch(SHEET_URL + "?t=" + Date.now());
+            allData = await r.json();
+        }
+        const producto = allData.find(i => i.codigo?.toString().toUpperCase() === codigo);
+        if (producto) {
+            abrirModal(producto);
+        } else {
+            input.style.borderColor = 'var(--red)';
+            input.placeholder = '⚠ Código no encontrado';
+            setTimeout(() => { input.placeholder = 'Código del activo...'; }, 3000);
+        }
+    } catch(e) {
+        alert("❌ Error de conexión con la base de datos.");
+    } finally {
+        btn.innerHTML = "Buscar";
+        btn.disabled = false;
+    }
+}
+
+function abrirModal(p) {
+    document.getElementById('modalNombre').textContent = p.descripcion || '—';
+    document.getElementById('modalMarca').textContent = p.marca || '—';
+    document.getElementById('modalCodigo').textContent = p.codigo || '—';
+    document.getElementById('modalUbicacion').textContent = p.ubicacionActual || '—';
+    const fC = p.fechaCompra;
+    document.getElementById('modalFecha').textContent = fC ? (fC.includes('T') ? new Date(fC).toLocaleDateString('es-PE') : fC) : '—';
+
+    const tabla = document.getElementById('historialTabla');
+    tabla.innerHTML = '';
+    if (p.historial?.length > 0) {
+        p.historial.forEach(mov => {
+            const estado = mov.estado?.toLowerCase() || '';
+            const badgeClass = estado.includes('bueno') ? 'badge-green' : estado.includes('malo') ? 'badge-red' : 'badge-orange';
+            tabla.innerHTML += `
+                <tr>
+                    <td>${mov.fecha ? new Date(mov.fecha).toLocaleDateString('es-PE') : '—'}</td>
+                    <td style="font-weight:500">${mov.ubicacion || '—'}</td>
+                    <td><span class="badge ${badgeClass}">${mov.estado || '—'}</span></td>
+                </tr>`;
+        });
+    } else {
+        tabla.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:1.5rem">Sin historial previo</td></tr>`;
+    }
+    document.getElementById('assetModal').classList.add('open');
+}
+
+function cerrarModal() {
+    document.getElementById('assetModal').classList.remove('open');
+}
+
+// ── DASHBOARD ──
+async function loadDashboard() {
+    try {
+        const r = await fetch(SHEET_URL + "?t=" + Date.now());
+        allData = await r.json();
+        renderStats();
+        renderCharts();
+        renderRecentTable();
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+function renderStats() {
+    const total = allData.length;
+    let buenos = 0, malos = 0;
+    const ubicSet = new Set();
+
+    allData.forEach(item => {
+        const estado = (item.estado || item.ubicacionActual || '').toLowerCase();
+        if (item.ubicacionActual) ubicSet.add(item.ubicacionActual);
+        // Check historial last entry for state
+        if (item.historial?.length > 0) {
+            const last = item.historial[item.historial.length - 1];
+            if (last.estado?.toLowerCase().includes('bueno')) buenos++;
+            else malos++;
+        }
+    });
+
+    animateNum('kpiTotal', total);
+    animateNum('kpiBuenos', buenos);
+    animateNum('kpiMalos', malos);
+    animateNum('kpiUbicaciones', ubicSet.size);
+}
+
+function animateNum(id, target) {
+    const el = document.getElementById(id);
+    let cur = 0;
+    const step = Math.ceil(target / 30);
+    const timer = setInterval(() => {
+        cur = Math.min(cur + step, target);
+        el.textContent = cur;
+        if (cur >= target) clearInterval(timer);
+    }, 30);
+}
+
+function renderCharts() {
+    // --- Chart 1: activos por ubicación ---
+    const ubMap = {};
+    allData.forEach(i => {
+        const u = i.ubicacionActual || 'Sin ubicación';
+        ubMap[u] = (ubMap[u] || 0) + 1;
+    });
+    const ubLabels = Object.keys(ubMap);
+    const ubValues = Object.values(ubMap);
+
+    const palette = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899','#06b6d4','#f97316'];
+    destroyChart('chartUbicacion');
+    charts['chartUbicacion'] = new Chart(document.getElementById('chartUbicacion'), {
+        type: 'bar',
+        data: { labels: ubLabels, datasets: [{ data: ubValues, backgroundColor: palette, borderRadius: 8, borderSkipped: false }] },
+        options: chartOpts('Activos')
+    });
+
+    // --- Chart 2: estado ---
+    let buenos = 0, malos = 0, otros = 0;
+    allData.forEach(i => {
+        if (i.historial?.length > 0) {
+            const est = i.historial[i.historial.length - 1]?.estado?.toLowerCase() || '';
+            if (est.includes('bueno')) buenos++;
+            else if (est.includes('malo') || est.includes('deteriorado')) malos++;
+            else otros++;
+        } else { otros++; }
+    });
+    destroyChart('chartEstado');
+    charts['chartEstado'] = new Chart(document.getElementById('chartEstado'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Buen estado', 'Mal estado', 'Sin registro'],
+            datasets: [{ data: [buenos, malos, otros], backgroundColor: ['#10b981','#ef4444','#64748b'], borderWidth: 0, hoverOffset: 6 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#94a3b8', font: { family: 'DM Sans', size: 11 }, padding: 16, boxWidth: 10, usePointStyle: true } },
+                tooltip: { backgroundColor: '#1a2d45', titleColor: '#e2e8f0', bodyColor: '#94a3b8', padding: 10 }
+            }
+        }
+    });
+
+    // --- Chart 3: adquisiciones por año ---
+    const yearMap = {};
+    allData.forEach(i => {
+        if (i.fechaCompra) {
+            const yr = new Date(i.fechaCompra).getFullYear();
+            if (!isNaN(yr)) yearMap[yr] = (yearMap[yr] || 0) + 1;
+        }
+    });
+    const yrs = Object.keys(yearMap).sort();
+    destroyChart('chartFechas');
+    charts['chartFechas'] = new Chart(document.getElementById('chartFechas'), {
+        type: 'line',
+        data: {
+            labels: yrs,
+            datasets: [{
+                label: 'Adquisiciones', data: yrs.map(y => yearMap[y]),
+                borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)',
+                borderWidth: 2, pointBackgroundColor: '#3b82f6', pointRadius: 5,
+                fill: true, tension: 0.4
+            }]
+        },
+        options: chartOpts('Adquisiciones')
+    });
+}
+
+function chartOpts(label) {
+    return {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: { backgroundColor: '#1a2d45', titleColor: '#e2e8f0', bodyColor: '#94a3b8', padding: 10 }
+        },
+        scales: {
+            x: { ticks: { color: '#64748b', font: { family: 'DM Sans', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+            y: { ticks: { color: '#64748b', font: { family: 'DM Sans', size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true }
+        }
+    };
+}
+
+function destroyChart(id) {
+    if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function renderRecentTable() {
+    const tbody = document.getElementById('recentTable');
+    const recientes = [];
+    allData.forEach(item => {
+        if (item.historial?.length > 0) {
+            const last = item.historial[item.historial.length - 1];
+            recientes.push({ ...last, codigo: item.codigo, descripcion: item.descripcion });
+        }
+    });
+    recientes.sort((a,b) => new Date(b.fecha) - new Date(a.fecha));
+    const top = recientes.slice(0, 10);
+
+    if (top.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:2rem">Sin movimientos registrados</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = top.map(m => {
+        const estado = m.estado?.toLowerCase() || '';
+        const badgeClass = estado.includes('bueno') ? 'badge-green' : estado.includes('malo') ? 'badge-red' : 'badge-orange';
+        return `
+            <tr>
+                <td><span class="mono">${m.codigo || '—'}</span></td>
+                <td>${m.descripcion || '—'}</td>
+                <td style="color:var(--text-muted)">${m.fecha ? new Date(m.fecha).toLocaleDateString('es-PE') : '—'}</td>
+                <td>${m.ubicacion || '—'}</td>
+                <td><span class="badge ${badgeClass}">${m.estado || '—'}</span></td>
+            </tr>`;
+    }).join('');
+}
+
+
+// ── RAW DATA TABLE ──
+let rawDataFull = [];
+
+async function loadRawData(force = false) {
+    const tbody = document.getElementById('rawBody');
+    const thead = document.getElementById('rawHead');
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:3rem">⟳ Cargando desde Google Sheets...</td></tr>`;
+    thead.innerHTML = '';
+    document.getElementById('rawCount').textContent = '';
+
+    try {
+        if (allData.length === 0 || force) {
+            const r = await fetch(SHEET_URL + "?t=" + Date.now());
+            allData = await r.json();
+        }
+        rawDataFull = allData;
+        renderRawTable(rawDataFull);
+    } catch(e) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--red);padding:3rem">❌ Error de conexión</td></tr>`;
+    }
+}
+
+function renderRawTable(data) {
+    const thead = document.getElementById('rawHead');
+    const tbody = document.getElementById('rawBody');
+
+    if (!data || data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:3rem">Sin datos</td></tr>`;
+        return;
+    }
+
+    // Build columns from keys of first object (excluding historial array)
+    const sample = data[0];
+    const cols = Object.keys(sample).filter(k => k !== 'historial');
+
+    // Header
+    thead.innerHTML = '<tr>' + cols.map(c =>
+        `<th style="padding:12px 14px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);font-weight:600;white-space:nowrap;border-bottom:1px solid var(--border)">${c}</th>`
+    ).join('') + '<th style="padding:12px 14px;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border)"># Movimientos</th></tr>';
+
+    // Rows
+    tbody.innerHTML = data.map(row => {
+        const cells = cols.map(c => {
+            let val = row[c] ?? '—';
+            if (typeof val === 'string' && val.includes('T') && !isNaN(Date.parse(val))) {
+                val = new Date(val).toLocaleDateString('es-PE');
+            }
+            const isCode = c === 'codigo';
+            return `<td style="padding:12px 14px;font-size:0.83rem;border-bottom:1px solid rgba(255,255,255,0.04);white-space:nowrap;${isCode?'font-family:DM Mono,monospace;color:var(--accent)':''}">${val}</td>`;
+        }).join('');
+        const movs = row.historial?.length ?? 0;
+        const badge = movs > 0 ? `<span class="badge badge-green">${movs}</span>` : `<span style="color:var(--text-muted);font-size:0.75rem">0</span>`;
+        return `<tr style="transition:background 0.15s" onmouseover="this.style.background='rgba(59,130,246,0.05)'" onmouseout="this.style.background=''">${cells}<td style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.04)">${badge}</td></tr>`;
+    }).join('');
+
+    document.getElementById('rawCount').textContent = `${data.length} registros cargados`;
+}
+
+function filterRawTable() {
+    const q = document.getElementById('rawSearch').value.toLowerCase();
+    if (!q) { renderRawTable(rawDataFull); return; }
+    const filtered = rawDataFull.filter(row =>
+        Object.values(row).some(v => v && v.toString().toLowerCase().includes(q))
+    );
+    renderRawTable(filtered);
+}
+
+// close modals on overlay click
+document.getElementById('assetModal').addEventListener('click', function(e){ if(e.target===this) cerrarModal(); });
+document.getElementById('pwModal').addEventListener('click', function(e){ if(e.target===this) closePwModal(); });
+</script>
+</body>
+</html>
