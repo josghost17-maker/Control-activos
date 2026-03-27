@@ -548,7 +548,7 @@
 // ═══════════════════════════════════════════════
 //  CONFIGURACIÓN — edita solo estos valores
 // ═══════════════════════════════════════════════
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbznCQnPJ1iz0lNnYJHMRmv-Lm8a3OOM3x4zoFU23CaZM4xhTlqEghMH5xFXWGIWsZZe/exec";
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbydkZ2lwWBR3t83pIGiifjTXvYXj2sp4WFOVy_uQaCqFLfxqUGkJFUgn15Ngng4Y4NU/exec";
 
 // Contraseñas para pestañas protegidas
 const PASSWORDS = {
@@ -701,14 +701,10 @@ function renderStats() {
     const ubicSet = new Set();
 
     allData.forEach(item => {
-        const estado = (item.estado || item.ubicacionActual || '').toLowerCase();
         if (item.ubicacionActual) ubicSet.add(item.ubicacionActual);
-        // Check historial last entry for state
-        if (item.historial?.length > 0) {
-            const last = item.historial[item.historial.length - 1];
-            if (last.estado?.toLowerCase().includes('bueno')) buenos++;
-            else malos++;
-        }
+        const estado = (item.estado || '').toString().toLowerCase();
+        if (estado.includes('bueno')) buenos++;
+        else if (estado.includes('malo') || estado.includes('deteriorado') || estado.includes('regular')) malos++;
     });
 
     animateNum('kpiTotal', total);
@@ -749,12 +745,10 @@ function renderCharts() {
     // --- Chart 2: estado ---
     let buenos = 0, malos = 0, otros = 0;
     allData.forEach(i => {
-        if (i.historial?.length > 0) {
-            const est = i.historial[i.historial.length - 1]?.estado?.toLowerCase() || '';
-            if (est.includes('bueno')) buenos++;
-            else if (est.includes('malo') || est.includes('deteriorado')) malos++;
-            else otros++;
-        } else { otros++; }
+        const est = (i.estado || '').toString().toLowerCase();
+        if (est.includes('bueno')) buenos++;
+        else if (est.includes('malo') || est.includes('deteriorado') || est.includes('regular')) malos++;
+        else otros++;
     });
     destroyChart('chartEstado');
     charts['chartEstado'] = new Chart(document.getElementById('chartEstado'), {
