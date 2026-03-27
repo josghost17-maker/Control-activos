@@ -6,7 +6,6 @@
     <title>Sistema de Control de Activos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -303,10 +302,7 @@
                 <svg class="lock-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
                 Ver Datos
             </button>
-            <button class="tab-btn" onclick="checkPassword('qrgenerator', this)">
-                <svg class="lock-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                QR Codes
-            </button>
+
         </nav>
     </div>
 </header>
@@ -505,6 +501,18 @@
                     <p id="modalFecha">—</p>
                 </div>
             </div>
+            <!-- QR Code -->
+            <div style="display:flex;align-items:center;gap:1.5rem;background:var(--navy);border:1px solid var(--border);border-radius:16px;padding:1.4rem;margin-bottom:1rem">
+                <div id="modalQR" style="background:white;padding:8px;border-radius:10px;flex-shrink:0;min-width:100px;min-height:100px;display:flex;align-items:center;justify-content:center">
+                    <span style="color:#ccc;font-size:0.75rem">Sin QR</span>
+                </div>
+                <div style="flex:1">
+                    <p style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted);margin-bottom:6px">Código QR del Activo</p>
+                    <p style="font-size:0.8rem;color:var(--text-muted);line-height:1.5">Escanea para ver la ficha completa de este bien desde cualquier dispositivo.</p>
+                    <button id="btnDownloadQR" onclick="downloadModalQR()" style="margin-top:10px;background:var(--accent);color:white;border:none;border-radius:8px;padding:7px 14px;font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer">⬇ Descargar QR</button>
+                </div>
+            </div>
+
             <div style="background:var(--navy);border:1px solid var(--border);border-radius:16px;padding:1.4rem">
                 <div class="chart-title" style="margin-bottom:1rem">Historial de Movimientos</div>
                 <table>
@@ -540,7 +548,7 @@
 // ═══════════════════════════════════════════════
 //  CONFIGURACIÓN — edita solo estos valores
 // ═══════════════════════════════════════════════
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbwHa3Nley7wwddmC3kmM4zmfLfsb80tnRftRQcOYm-dFai_RzS1vGZ7BrItkWzYYHcb/exec";
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbznCQnPJ1iz0lNnYJHMRmv-Lm8a3OOM3x4zoFU23CaZM4xhTlqEghMH5xFXWGIWsZZe/exec";
 
 // Contraseñas para pestañas protegidas
 const PASSWORDS = {
@@ -565,7 +573,6 @@ function switchTab(name, btn) {
     btn.classList.add('active');
     if (name === 'dashboard' && allData.length === 0) loadDashboard();
     if (name === 'rawdata') loadRawData();
-    if (name === 'qrgenerator') loadQRPanel();
 }
 
 // ── PASSWORD ──
@@ -655,6 +662,19 @@ function abrirModal(p) {
     } else {
         tabla.innerHTML = `<tr><td colspan="3" style="text-align:center;color:var(--text-muted);padding:1.5rem">Sin historial previo</td></tr>`;
     }
+    // Mostrar QR
+    const qrContainer = document.getElementById('modalQR');
+    const btnDL = document.getElementById('btnDownloadQR');
+    if (p.qrUrl) {
+        qrContainer.innerHTML = `<img src="${p.qrUrl}" style="width:100px;height:100px;border-radius:6px" alt="QR ${p.codigo}">`;
+        btnDL.style.display = 'inline-block';
+        btnDL.setAttribute('data-url', p.qrUrl);
+        btnDL.setAttribute('data-codigo', p.codigo);
+    } else {
+        qrContainer.innerHTML = '<span style="color:#ccc;font-size:0.75rem">Sin QR</span>';
+        btnDL.style.display = 'none';
+    }
+
     document.getElementById('assetModal').classList.add('open');
 }
 
@@ -1008,6 +1028,18 @@ function downloadQR(idx, codigo) {
 
 function printAllQR() {
     window.print();
+}
+
+function downloadModalQR() {
+    const btn = document.getElementById('btnDownloadQR');
+    const url = btn.getAttribute('data-url');
+    const codigo = btn.getAttribute('data-codigo');
+    if (!url) return;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'QR-' + codigo + '.png';
+    a.target = '_blank';
+    a.click();
 }
 
 // close modals on overlay click
